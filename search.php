@@ -1,45 +1,57 @@
 <?php
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
-require_login();
+require_once 'includes/helpers.php';
+require_once 'includes/pagination.php';
+
 $page_title = 'Search Items | Property Reporting and Recovery System';
 $asset_path = '';
 $active = 'search';
 
-$type = $_GET['type'] ?? 'found';
+$type = ($_GET['type'] ?? 'found') === 'lost' ? 'lost' : 'found';
 $q = trim($_GET['q'] ?? '');
 $category = trim($_GET['category'] ?? '');
-$categories = ['Electronics','Documents','Jewelry','Bags','Clothing','Keys','Books','Wallet/Purse','Other'];
+$categories = PRS_CATEGORIES;
 
 $table = $type === 'lost' ? 'lost_items' : 'found_items';
 $loc_field = $type === 'lost' ? 'location_lost' : 'location_found';
 
-$sql = "SELECT * FROM $table WHERE 1=1";
+$countSql  = "SELECT COUNT(*) FROM {$table} WHERE 1=1";
+$selectSql = "SELECT * FROM {$table} WHERE 1=1";
 $params = [];
+
 if ($q !== '') {
-    $sql .= " AND (item_name LIKE ? OR description LIKE ? OR $loc_field LIKE ?)";
-    $params[] = "%$q%"; $params[] = "%$q%"; $params[] = "%$q%";
+    $clause = " AND (item_name LIKE ? OR description LIKE ? OR {$loc_field} LIKE ?)";
+    $countSql  .= $clause;
+    $selectSql .= $clause;
+    $params[] = "%{$q}%";
+    $params[] = "%{$q}%";
+    $params[] = "%{$q}%";
 }
+
 if ($category !== '') {
-    $sql .= " AND category = ?";
+    $clause = " AND category = ?";
+    $countSql  .= $clause;
+    $selectSql .= $clause;
     $params[] = $category;
 }
-$sql .= " ORDER BY created_at DESC";
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$selectSql .= " ORDER BY created_at DESC";
+
+$pagination = paginate($pdo, $countSql, $selectSql, $params, 8, 'page');
+$results = $pagination['items'];
 
 include 'includes/header.php';
 ?>
 <div class="page">
   <div class="page-header">
     <h1>Search Reported Items</h1>
-    <p>Search across all lost or found item reports submitted to the Security Unit.</p>
+    <p>Search across lost or found item reports submitted to the Security Unit.</p>
   </div>
 
   <div class="tabs">
-    <a href="?type=found" class="<?= $type === 'found' ? 'active' : '' ?>">Found Items</a>
-    <a href="?type=lost" class="<?= $type === 'lost' ? 'active' : '' ?>">Lost Items</a>
+    <a href="?type=found&q=<?= urlencode($q) ?>&category=<?= urlencode($category) ?>" class="<?= $type === 'found' ? 'active' : '' ?>">Found Items</a>
+    <a href="?type=lost&q=<?= urlencode($q) ?>&category=<?= urlencode($category) ?>" class="<?= $type === 'lost' ? 'active' : '' ?>">Lost Items</a>
   </div>
 
   <div class="card">
@@ -65,7 +77,13 @@ include 'includes/header.php';
   </div>
 
   <div class="card">
-    <h2><?= count($results) ?> result<?= count($results) === 1 ? '' : 's' ?> found</h2>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 style="margin:0;"><?= $pagination['total'] ?> <?= ucfirst($type) ?> Item<?= $pagination['total'] === 1 ? '' : 's' ?> Found</h2>
+      <?php if ($pagination['total_pages'] > 1): ?>
+        <small style="color:var(--muted);">Page <?= $pagination['current_page'] ?> of <?= $pagination['total_pages'] ?></small>
+      <?php endif; ?>
+    </div>
+
     <?php if (empty($results)): ?>
       <div class="empty-state">No matching items found. Try a different keyword or category.</div>
     <?php else: ?>
@@ -77,12 +95,26 @@ include 'includes/header.php';
             <?php else: ?>&#128230;<?php endif; ?>
           </div>
           <div style="flex:1;">
-            <div class="title"><?= htmlspecialchars($item['item_name']) ?> <span class="badge badge-<?= $item['status'] ?>"><?= ucfirst($item['status']) ?></span></div>
-            <div class="meta"><?= htmlspecialchars($item['category']) ?> &middot; <?= htmlspecialchars($item[$loc_field]) ?> &middot; <?= date('d M Y', strtotime($type === 'lost' ? $item['date_lost'] : $item['date_found'])) ?></div>
-            <p style="margin:6px 0 0; font-size:13.5px;"><?= htmlspecialchars($item['description']) ?></p>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+              <div class="title">
+                <?= htmlspecialchars($item['item_name']) ?>
+                <?= render_status_badge($item['status']) ?>
+              </div>
+              <?php if ($type === 'found' && $item['status'] === 'pending' && (!isset($_SESSION['user_id']) || $item['user_id'] !== $_SESSION['user_id'])): ?>
+                <a href="claim_item.php?item_id=<?= (int)$item['id'] ?>" class="btn btn-sm btn-gold" style="font-size:12px;">This is Mine (Claim)</a>
+              <?php endif; ?>
+            </div>
+            <div class="meta" style="margin-top:4px;">
+              <?= htmlspecialchars($item['category']) ?> &middot;
+              <?= htmlspecialchars($item[$loc_field]) ?> &middot;
+              <?= date('d M Y', strtotime($type === 'lost' ? $item['date_lost'] : $item['date_found'])) ?>
+            </div>
+            <p style="margin:8px 0 0; font-size:13.5px;"><?= nl2br(htmlspecialchars($item['description'])) ?></p>
           </div>
         </div>
       <?php endforeach; ?>
+
+      <?= render_pagination($pagination['current_page'], $pagination['total_pages'], ['type', 'q', 'category']) ?>
     <?php endif; ?>
   </div>
 </div>

@@ -176,6 +176,23 @@ tr:hover td { background: #fafbfd; }
 
 .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); }
 
+/* ---------- Universal Pagination ---------- */
+.pagination {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 18px; font-size: 13px;
+}
+.pagination a, .pagination span {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 36px; padding: 8px 10px;
+  border-radius: 6px; border: 1px solid var(--border); background: #fff; color: var(--navy-dark);
+}
+.pagination a:hover { text-decoration: none; background: #f7f9fc; }
+.pagination .current {
+  background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 700;
+}
+.pagination .disabled {
+  color: var(--muted); background: #f7f9fb; cursor: not-allowed;
+}
+
 .hero {
   background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
   color: #fff; padding: 70px 24px; text-align: center;
@@ -184,7 +201,57 @@ tr:hover td { background: #fafbfd; }
 .hero p { font-size: 16px; opacity: 0.85; max-width: 600px; margin: 0 auto 26px; }
 .hero .btn { margin: 0 6px; }
 
+
 @media (max-width: 720px) {
   .grid-3, .grid-2, .form-row { grid-template-columns: 1fr; }
   .nav-links { display: none; }
 }
+
+/* ---------- Nigerian Phone Input Widget ---------- */
+.ng-phone-wrap {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  background: #fff;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.ng-phone-wrap:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(217,164,65,0.18);
+}
+.ng-phone-prefix {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 12px;
+  background: #f0f4f9;
+  border-right: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy-dark);
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+}
+.ng-phone-prefix .ng-flag {
+  font-size: 16px;
+}
+.ng-phone-wrap input[type="tel"] {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  flex: 1;
+  min-width: 0;
+}
+.ng-phone-error {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 5px;
+  display: none;
+}
+.ng-phone-error.visible {
+  display: block;
+}
+
